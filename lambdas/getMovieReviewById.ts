@@ -1,6 +1,6 @@
 import { APIGatewayProxyHandlerV2 } from "aws-lambda";
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
-import { DynamoDBDocumentClient, QueryCommand } from "@aws-sdk/lib-dynamodb";
+import { DynamoDBDocumentClient, QueryCommand, QueryCommandInput } from "@aws-sdk/lib-dynamodb";
 const ddbDocClient = createDynamoDBDocumentClient();
 export const handler: APIGatewayProxyHandlerV2 = async (event, context) => {     // Note change
     try {
@@ -19,32 +19,24 @@ export const handler: APIGatewayProxyHandlerV2 = async (event, context) => {    
         body: JSON.stringify({ Message: "Missing movie Id" }),
       };
     }
-    var commandOutput :any;
-    if(!minRating){
-// Retrieve movie reviews with the same MovieId from DynamoDB
-    commandOutput = await ddbDocClient.send(
-    new QueryCommand({
-      TableName: process.env.TABLE_NAME,
-      KeyConditionExpression: "MovieId = :MovieId",
-      ExpressionAttributeValues: {
-        ":MovieId": MovieId,
-      },
-    })
-  );
+    let commandOutput;
+    const params : QueryCommandInput= {
+        TableName: process.env.TABLE_NAME,
+        KeyConditionExpression: "MovieId = :MovieId",
+        ExpressionAttributeValues: {
+            ":MovieId": MovieId
+        }
+    };
+
+    params.ExpressionAttributeValues ??= {};
+
+    if (minRating) {
+        params.FilterExpression = "Rating >= :minRating";
+        params.ExpressionAttributeValues[":minRating"] = minRating
+        
     }
-    else{
-      commandOutput = await ddbDocClient.send(
-        new QueryCommand({
-          TableName: process.env.TABLE_NAME,
-          KeyConditionExpression: "MovieId = :MovieId",
-          FilterExpression: "Rating >= :minRating",
-          ExpressionAttributeValues: {
-            ":MovieId": MovieId,
-            ":minRating" : minRating
-          },
-        })
-      );
-    }
+
+  commandOutput = await ddbDocClient.send(new QueryCommand(params));
   if (!commandOutput.Items || commandOutput.Items.length === 0) {
     return {
       statusCode: 404,

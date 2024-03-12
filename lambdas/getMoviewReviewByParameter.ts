@@ -1,13 +1,14 @@
 import { APIGatewayProxyHandlerV2 } from "aws-lambda";
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
-import { DynamoDBDocumentClient, QueryCommand } from "@aws-sdk/lib-dynamodb";
+import { DynamoDBDocumentClient, QueryCommand, QueryCommandInput } from "@aws-sdk/lib-dynamodb";
 const ddbDocClient = createDynamoDBDocumentClient();
 export const handler: APIGatewayProxyHandlerV2 = async (event, context) => {     // Note change
     try {
       console.log("Event: ", event);
       const parameters  = event?.pathParameters;
       const movieId = parameters?.MovieId ? parseInt(parameters.MovieId) : undefined;
-      const reviewerName = parameters?.reviewerName ? parameters.reviewerName : undefined;
+      const parameter = parameters?.parameter ? parameters.parameter : undefined;
+
 
       if (!movieId) {
       return {
@@ -18,23 +19,35 @@ export const handler: APIGatewayProxyHandlerV2 = async (event, context) => {    
         body: JSON.stringify({ Message: "Missing movie Id" }),
       };
     }
-      const commandOutput = await ddbDocClient.send(
-        new QueryCommand({
-          TableName: process.env.TABLE_NAME,
-          KeyConditionExpression: "MovieId = :movieId AND ReviewerName = :reviewerName",
-          ExpressionAttributeValues: {
-            ":movieId": movieId,
-            ":reviewerName" : reviewerName
-          },
-        })
-      )
+    let commandOutput;
+    const params : QueryCommandInput= {
+        TableName: process.env.TABLE_NAME,
+        KeyConditionExpression: "MovieId = :MovieId",
+        ExpressionAttributeValues: {
+          ":MovieId": movieId
+        }
+    };
+
+    params.ExpressionAttributeValues ??= {};
+
+    if (parameter) {
+      if (isNumber(parameter)) {
+          params.FilterExpression = "begins_with(ReviewDate, :year)";
+          params.ExpressionAttributeValues[":year"] = parameter ;
+      } else {
+          params.KeyConditionExpression += " AND ReviewerName = :reviewerName";
+          params.ExpressionAttributeValues[":reviewerName"] =  parameter ;
+      }
+  }
+  
+  commandOutput = await ddbDocClient.send(new QueryCommand(params));
   if (!commandOutput.Items || commandOutput.Items.length === 0) {
     return {
       statusCode: 404,
       headers: {
         "content-type": "application/json",
       },
-      body: JSON.stringify({ Message: "No movie reviews found for the given Reviewer for this movie" }),
+      body: JSON.stringify({ Message: "No movie reviews found for the filter." }),
     };
   }
   return {
@@ -67,4 +80,8 @@ function createDynamoDBDocumentClient() {
   };
   const translateConfig = { marshallOptions, unmarshallOptions };
   return DynamoDBDocumentClient.from(ddbClient, translateConfig);
+}
+
+function isNumber(str: string): boolean {
+  return /^\d+$/.test(str);
 }

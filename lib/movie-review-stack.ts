@@ -57,13 +57,13 @@ export class MovieReviewStack extends cdk.Stack {
       }
     );
 
-    const getMovieReviewByReviewerName = new lambdanode.NodejsFunction(
+    const getMovieReviewByParameter = new lambdanode.NodejsFunction(
       this,
       "GetMovieReviewByReviewerName",
       {
         architecture: lambda.Architecture.ARM_64,
         runtime: lambda.Runtime.NODEJS_16_X,
-        entry: `${__dirname}/../lambdas/getMoviewReviewByReviewer.ts`,
+        entry: `${__dirname}/../lambdas/getMoviewReviewByParameter.ts`,
         timeout: cdk.Duration.seconds(10),
         memorySize: 128,
         environment: {
@@ -73,8 +73,26 @@ export class MovieReviewStack extends cdk.Stack {
       }
     )
 
+    const getReviewsByReviewer = new lambdanode.NodejsFunction(
+      this,
+      "GetReviewByReviewer",
+      {
+        architecture: lambda.Architecture.ARM_64,
+        runtime: lambda.Runtime.NODEJS_16_X,
+        entry: `${__dirname}/../lambdas/getMoviewReviewByReviwer.ts`,
+        timeout: cdk.Duration.seconds(10),
+        memorySize: 128,
+        environment: {
+          TABLE_NAME: moviesTable.tableName,
+          REGION: 'eu-west-1',
+        },
+
+      }
+    )
+
+
     moviesTable.grantReadData(getMovieReviewByIdFn)
-    moviesTable.grantReadData(getMovieReviewByReviewerName)
+    moviesTable.grantReadData(getMovieReviewByParameter)
 
     const api = new apig.RestApi(this, "RestAPI", {
       description: "demo api",
@@ -92,12 +110,16 @@ export class MovieReviewStack extends cdk.Stack {
     const moviesEndpoint = api.root.addResource("movies");
     const movieEndpoint = moviesEndpoint.addResource("{MovieId}");
     const reviewEndpoint = movieEndpoint.addResource("reviews")
-    const reviewerEndPoint = reviewEndpoint.addResource("{reviewerName}")
-    const yearEndpoint = reviewEndpoint.addResource("{year}")
+    const reviewerEndPoint = reviewEndpoint.addResource("{parameter}")
 
 
+    const reviewMainEndPoint = api.root.addResource("reviews");
+    const reviewerMainEndPoint = reviewMainEndPoint.addResource("reviewerName")
+
+ 
     reviewEndpoint.addMethod( "GET", new apig.LambdaIntegration(getMovieReviewByIdFn, { proxy: true }));
-    reviewerEndPoint.addMethod("GET", new apig.LambdaIntegration(getMovieReviewByReviewerName, {proxy: true}));
+    reviewerEndPoint.addMethod("GET", new apig.LambdaIntegration(getMovieReviewByParameter, {proxy: true}))
+    reviewerMainEndPoint.addMethod("GET", new apig.LambdaIntegration())
     
     
   }
