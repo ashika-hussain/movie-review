@@ -20,9 +20,8 @@ export class MovieReviewStack extends cdk.Stack {
       removalPolicy: cdk.RemovalPolicy.DESTROY,
       tableName: "MovieReviews",
     });
-    moviesTable.addGlobalSecondaryIndex({
+    moviesTable.addLocalSecondaryIndex({
       indexName: 'ReviewerDateIndex',
-      partitionKey: { name: 'ReviewerName', type: dynamodb.AttributeType.STRING },
       sortKey: { name: 'ReviewDate', type: dynamodb.AttributeType.STRING }
     });
     
@@ -89,11 +88,49 @@ export class MovieReviewStack extends cdk.Stack {
 
       }
     )
+    const addnewReview = new lambdanode.NodejsFunction(this, "addnewReview", {
+      architecture: lambda.Architecture.ARM_64,
+      runtime: lambda.Runtime.NODEJS_16_X,
+      entry: `${__dirname}/../lambdas/addMovieReview.ts`,
+      timeout: cdk.Duration.seconds(10),
+      memorySize: 128,
+      environment: {
+        TABLE_NAME: moviesTable.tableName,
+        REGION: "eu-west-1",
+      },
+    });
 
+    addnewReview.addFunctionUrl({
+      authType: lambda.FunctionUrlAuthType.AWS_IAM,
+      cors: {
+        allowedOrigins: ["*"],
+      },
+    });
+
+    const updateMovieReview = new lambdanode.NodejsFunction(this, "updateMovieReview", {
+      architecture: lambda.Architecture.ARM_64,
+      runtime: lambda.Runtime.NODEJS_16_X,
+      entry: `${__dirname}/../lambdas/updateMovieReview.ts`,
+      timeout: cdk.Duration.seconds(10),
+      memorySize: 128,
+      environment: {
+        TABLE_NAME: moviesTable.tableName,
+        REGION: "eu-west-1",
+      },
+    });
+
+    updateMovieReview.addFunctionUrl({
+      authType: lambda.FunctionUrlAuthType.AWS_IAM,
+      cors: {
+        allowedOrigins: ["*"],
+      },
+    });
     
     moviesTable.grantReadData(getMovieReviewByIdFn)
     moviesTable.grantReadData(getMovieReviewByParameter)
     moviesTable.grantReadData(getReviewsByReviewer)
+    moviesTable.grantWriteData(addnewReview)
+    moviesTable.grantWriteData(updateMovieReview)
 
     const api = new apig.RestApi(this, "RestAPI", {
       description: "demo api",
@@ -113,6 +150,8 @@ export class MovieReviewStack extends cdk.Stack {
     const reviewEndpoint = movieEndpoint.addResource("reviews")
     const reviewerEndPoint = reviewEndpoint.addResource("{parameter}")
 
+    const addEndPoint = moviesEndpoint.addResource("reviews")
+
 
     const reviewMainEndPoint = api.root.addResource("reviews");
     const reviewerMainEndPoint = reviewMainEndPoint.addResource("{reviewerName}")
@@ -121,6 +160,8 @@ export class MovieReviewStack extends cdk.Stack {
     reviewEndpoint.addMethod( "GET", new apig.LambdaIntegration(getMovieReviewByIdFn, { proxy: true }));
     reviewerEndPoint.addMethod("GET", new apig.LambdaIntegration(getMovieReviewByParameter, {proxy: true}))
     reviewerMainEndPoint.addMethod("GET", new apig.LambdaIntegration(getReviewsByReviewer, {proxy: true}))
+    addEndPoint.addMethod("POST", new apig.LambdaIntegration(addnewReview, { proxy: true }));
+    reviewerEndPoint. addMethod("PUT", new apig.LambdaIntegration(updateMovieReview, {proxy:true}))
     
     
   }
