@@ -2,6 +2,7 @@
 import 'source-map-support/register';
 import * as cdk from 'aws-cdk-lib';
 import { MovieReviewStack } from '../lib/movie-review-stack';
+import { AuthAppStack } from '../lib/auth-app-stack';
 
 const app = new cdk.App();
 new MovieReviewStack(app, 'MovieReviewStack', {
@@ -19,3 +20,5 @@ new MovieReviewStack(app, 'MovieReviewStack', {
 
   /* For more information, see https://docs.aws.amazon.com/cdk/latest/guide/environments.html */
 });
+
+new AuthAppStack(app,'AuthAppStack')
