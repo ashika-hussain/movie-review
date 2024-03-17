@@ -7,11 +7,21 @@ import * as custom from "aws-cdk-lib/custom-resources";
 import { generateBatch } from "../shared/util";
 import { movieReviews } from '../seed/reviews';
 import * as apig from "aws-cdk-lib/aws-apigateway";
+import { AuthAppStack } from './auth-app-stack';
 // import * as sqs from 'aws-cdk-lib/aws-sqs';
 
+type AuthProps = {
+  userPoolId: string;
+  userPoolClientId: string;
+};
 export class MovieReviewStack extends cdk.Stack {
-  constructor(scope: Construct, id: string, props?: cdk.StackProps) {
-    super(scope, id, props);
+  private auth: apig.IResource;
+  private userPoolId: string;
+  private userPoolClientId: string;
+
+  constructor(scope: Construct, id: string, props: AuthProps) {
+    super(scope, id);
+
 
     const moviesTable = new dynamodb.Table(this, "MoviesTable", {
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
@@ -96,16 +106,12 @@ export class MovieReviewStack extends cdk.Stack {
       memorySize: 128,
       environment: {
         TABLE_NAME: moviesTable.tableName,
+        USER_POOL_ID: props.userPoolId,
+        CLIENT_ID: props.userPoolClientId,
         REGION: "eu-west-1",
       },
     });
 
-    addnewReview.addFunctionUrl({
-      authType: lambda.FunctionUrlAuthType.AWS_IAM,
-      cors: {
-        allowedOrigins: ["*"],
-      },
-    });
 
     const updateMovieReview = new lambdanode.NodejsFunction(this, "updateMovieReview", {
       architecture: lambda.Architecture.ARM_64,
@@ -115,22 +121,58 @@ export class MovieReviewStack extends cdk.Stack {
       memorySize: 128,
       environment: {
         TABLE_NAME: moviesTable.tableName,
+        USER_POOL_ID: props.userPoolId,
+        CLIENT_ID: props.userPoolClientId,
         REGION: "eu-west-1",
       },
     });
 
-    updateMovieReview.addFunctionUrl({
-      authType: lambda.FunctionUrlAuthType.AWS_IAM,
-      cors: {
-        allowedOrigins: ["*"],
+    const authorizerFn = new lambdanode.NodejsFunction(this, "AuthorizerFn", {
+      architecture: lambda.Architecture.ARM_64,
+      runtime: lambda.Runtime.NODEJS_16_X,
+      entry: `${__dirname}/../lambdas/auth/authorizer.ts`,
+      timeout: cdk.Duration.seconds(10),
+      memorySize: 128,
+      environment: {
+        USER_POOL_ID: props.userPoolId,
+        CLIENT_ID: props.userPoolClientId,
+        REGION: cdk.Aws.REGION,
       },
     });
+
+    const requestAuthorizer = new apig.RequestAuthorizer(
+      this,
+      "RequestAuthorizer",
+      {
+        identitySources: [apig.IdentitySource.header("cookie")],
+        handler: authorizerFn,
+        resultsCacheTtl: cdk.Duration.minutes(0),
+      }
+    );
+
+    const translateReview = new lambdanode.NodejsFunction(
+      this,
+      "GetTranslatedReview",
+      {
+        architecture: lambda.Architecture.ARM_64,
+        runtime: lambda.Runtime.NODEJS_16_X,
+        entry: `${__dirname}/../lambdas/translate.ts`,
+        timeout: cdk.Duration.seconds(10),
+        memorySize: 128,
+        environment: {
+          TABLE_NAME: moviesTable.tableName,
+          REGION: 'eu-west-1',
+        },
+
+      }
+    )
     
     moviesTable.grantReadData(getMovieReviewByIdFn)
     moviesTable.grantReadData(getMovieReviewByParameter)
     moviesTable.grantReadData(getReviewsByReviewer)
-    moviesTable.grantWriteData(addnewReview)
-    moviesTable.grantWriteData(updateMovieReview)
+    moviesTable.grantReadWriteData(addnewReview)
+    moviesTable.grantReadWriteData(updateMovieReview)
+    moviesTable.grantReadData(translateReview)
 
     const api = new apig.RestApi(this, "RestAPI", {
       description: "demo api",
@@ -155,13 +197,25 @@ export class MovieReviewStack extends cdk.Stack {
 
     const reviewMainEndPoint = api.root.addResource("reviews");
     const reviewerMainEndPoint = reviewMainEndPoint.addResource("{reviewerName}")
+    const translateEndPont = reviewerMainEndPoint.addResource("{MovieId}").addResource("translation")
 
  
-    reviewEndpoint.addMethod( "GET", new apig.LambdaIntegration(getMovieReviewByIdFn, { proxy: true }));
+    reviewEndpoint.addMethod( "GET", new apig.LambdaIntegration(getMovieReviewByIdFn),{
+      authorizer: requestAuthorizer,
+      authorizationType: apig.AuthorizationType.CUSTOM,
+    });
     reviewerEndPoint.addMethod("GET", new apig.LambdaIntegration(getMovieReviewByParameter, {proxy: true}))
     reviewerMainEndPoint.addMethod("GET", new apig.LambdaIntegration(getReviewsByReviewer, {proxy: true}))
-    addEndPoint.addMethod("POST", new apig.LambdaIntegration(addnewReview, { proxy: true }));
-    reviewerEndPoint. addMethod("PUT", new apig.LambdaIntegration(updateMovieReview, {proxy:true}))
+    addEndPoint.addMethod("POST", new apig.LambdaIntegration(addnewReview, {proxy: true}),{
+      authorizer: requestAuthorizer,
+      authorizationType: apig.AuthorizationType.CUSTOM,
+    });
+    reviewerEndPoint. addMethod("PUT", new apig.LambdaIntegration(updateMovieReview, {proxy:true}),{
+      authorizer: requestAuthorizer,
+      authorizationType: apig.AuthorizationType.CUSTOM,
+    })
+
+    translateEndPont.addMethod("GET", new apig.LambdaIntegration(translateReview,{proxy: true}))
     
     
   }
