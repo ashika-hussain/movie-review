@@ -14,3 +14,4 @@ export const generateBatch = (data: MovieReviews[]) => {
     return generateMovieItem(e);
   });
 };
+
