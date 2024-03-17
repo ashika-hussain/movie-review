@@ -26,8 +26,6 @@ This repository contains an implementation of a serverless REST API for the AWS 
 
 ### Authentication (if relevant).
 
-[Include a screenshot from the AWS management console (Cognito User Pools) showing a confirmed user account.]
-
 ![](./images/cognito.png)
 
 ### Independent learning (If relevant).
