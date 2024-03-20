@@ -8,6 +8,7 @@ import { generateBatch } from "../shared/util";
 import { movieReviews } from '../seed/reviews';
 import * as apig from "aws-cdk-lib/aws-apigateway";
 import { AuthAppStack } from './auth-app-stack';
+import { Policy, PolicyStatement } from 'aws-cdk-lib/aws-iam';
 // import * as sqs from 'aws-cdk-lib/aws-sqs';
 
 type AuthProps = {
@@ -166,6 +167,15 @@ export class MovieReviewStack extends cdk.Stack {
 
       }
     )
+
+    translateReview.role?.attachInlinePolicy(new Policy(this, 'TranslateTextPolicy', {
+      statements: [
+        new PolicyStatement({
+          actions: ['translate:TranslateText'],
+          resources: ['*'], // Consider restricting to specific resources if possible
+        }),
+      ],
+    }))
     
     moviesTable.grantReadData(getMovieReviewByIdFn)
     moviesTable.grantReadData(getMovieReviewByParameter)
@@ -199,7 +209,6 @@ export class MovieReviewStack extends cdk.Stack {
     const reviewerMainEndPoint = reviewMainEndPoint.addResource("{reviewerName}")
     const translateEndPont = reviewerMainEndPoint.addResource("{MovieId}").addResource("translation")
 
- 
     reviewEndpoint.addMethod( "GET", new apig.LambdaIntegration(getMovieReviewByIdFn),{
       authorizer: requestAuthorizer,
       authorizationType: apig.AuthorizationType.CUSTOM,

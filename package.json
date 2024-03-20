@@ -21,6 +21,7 @@
     "typescript-json-schema": "^0.63.0"
   },
   "dependencies": {
+    "@aws-cdk/aws-iam": "^1.204.0",
     "@aws-sdk/client-cognito-identity-provider": "^3.533.0",
     "@aws-sdk/client-dynamodb": "^3.67.0",
     "@aws-sdk/lib-dynamodb": "^3.79.0",
