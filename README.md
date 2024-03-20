@@ -22,11 +22,11 @@ This repository contains an implementation of a serverless REST API for the AWS 
 
 ![](./images/api1.png)
 
+![](./images/api3.png)
+
 ### Authentication (if relevant).
 
-[Include a screenshot from the AWS management console (Cognito User Pools) showing a confirmed user account.]
-
-![](./images/pool.png)
+![](./images/cognito.png)
 
 ### Independent learning (If relevant).
 
