@@ -209,10 +209,7 @@ export class MovieReviewStack extends cdk.Stack {
     const reviewerMainEndPoint = reviewMainEndPoint.addResource("{reviewerName}")
     const translateEndPont = reviewerMainEndPoint.addResource("{MovieId}").addResource("translation")
 
-    reviewEndpoint.addMethod( "GET", new apig.LambdaIntegration(getMovieReviewByIdFn),{
-      authorizer: requestAuthorizer,
-      authorizationType: apig.AuthorizationType.CUSTOM,
-    });
+    reviewEndpoint.addMethod( "GET", new apig.LambdaIntegration(getMovieReviewByIdFn, {proxy:true}));
     reviewerEndPoint.addMethod("GET", new apig.LambdaIntegration(getMovieReviewByParameter, {proxy: true}))
     reviewerMainEndPoint.addMethod("GET", new apig.LambdaIntegration(getReviewsByReviewer, {proxy: true}))
     addEndPoint.addMethod("POST", new apig.LambdaIntegration(addnewReview, {proxy: true}),{
