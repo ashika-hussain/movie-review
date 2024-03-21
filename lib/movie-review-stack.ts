@@ -7,7 +7,6 @@ import * as custom from "aws-cdk-lib/custom-resources";
 import { generateBatch } from "../shared/util";
 import { movieReviews } from '../seed/reviews';
 import * as apig from "aws-cdk-lib/aws-apigateway";
-import { AuthAppStack } from './auth-app-stack';
 import { Policy, PolicyStatement } from 'aws-cdk-lib/aws-iam';
 // import * as sqs from 'aws-cdk-lib/aws-sqs';
 
