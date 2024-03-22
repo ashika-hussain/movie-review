@@ -18,7 +18,7 @@ import {
       kid: string;
       kty: string;
       n: string;
-      use: string;
+      use: string
     }[];
   };
   

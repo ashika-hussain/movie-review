@@ -8,6 +8,7 @@ import { generateBatch } from "../shared/util";
 import { movieReviews } from '../seed/reviews';
 import * as apig from "aws-cdk-lib/aws-apigateway";
 import { Policy, PolicyStatement } from 'aws-cdk-lib/aws-iam';
+import * as path from 'path';
 // import * as sqs from 'aws-cdk-lib/aws-sqs';
 
 type AuthProps = {
@@ -21,6 +22,12 @@ export class MovieReviewStack extends cdk.Stack {
 
   constructor(scope: Construct, id: string, props: AuthProps) {
     super(scope, id);
+
+    const layer = new lambda.LayerVersion(this, 'MyLayer', {
+      compatibleRuntimes: [lambda.Runtime.NODEJS_16_X],
+      code: lambda.Code.fromAsset(path.join(__dirname, '../shared')),
+      description: 'My Lambda layer',
+    });
 
 
     const moviesTable = new dynamodb.Table(this, "MoviesTable", {
@@ -59,6 +66,7 @@ export class MovieReviewStack extends cdk.Stack {
         entry: `${__dirname}/../lambdas/getMovieReviewById.ts`,
         timeout: cdk.Duration.seconds(10),
         memorySize: 128,
+        layers: [layer],
         environment: {
           TABLE_NAME: moviesTable.tableName,
           REGION: 'eu-west-1',
@@ -75,6 +83,7 @@ export class MovieReviewStack extends cdk.Stack {
         entry: `${__dirname}/../lambdas/getMoviewReviewByParameter.ts`,
         timeout: cdk.Duration.seconds(10),
         memorySize: 128,
+        layers: [layer],
         environment: {
           TABLE_NAME: moviesTable.tableName,
           REGION: 'eu-west-1',
@@ -91,6 +100,7 @@ export class MovieReviewStack extends cdk.Stack {
         entry: `${__dirname}/../lambdas/getMoviewReviewByReviewer.ts`,
         timeout: cdk.Duration.seconds(10),
         memorySize: 128,
+        layers: [layer],
         environment: {
           TABLE_NAME: moviesTable.tableName,
           REGION: 'eu-west-1',
@@ -104,6 +114,7 @@ export class MovieReviewStack extends cdk.Stack {
       entry: `${__dirname}/../lambdas/addMovieReview.ts`,
       timeout: cdk.Duration.seconds(10),
       memorySize: 128,
+      layers: [layer],
       environment: {
         TABLE_NAME: moviesTable.tableName,
         USER_POOL_ID: props.userPoolId,
@@ -119,6 +130,7 @@ export class MovieReviewStack extends cdk.Stack {
       entry: `${__dirname}/../lambdas/updateMovieReview.ts`,
       timeout: cdk.Duration.seconds(10),
       memorySize: 128,
+      layers: [layer],
       environment: {
         TABLE_NAME: moviesTable.tableName,
         USER_POOL_ID: props.userPoolId,
@@ -159,6 +171,7 @@ export class MovieReviewStack extends cdk.Stack {
         entry: `${__dirname}/../lambdas/translate.ts`,
         timeout: cdk.Duration.seconds(10),
         memorySize: 128,
+        layers: [layer],
         environment: {
           TABLE_NAME: moviesTable.tableName,
           REGION: 'eu-west-1',
@@ -175,6 +188,7 @@ export class MovieReviewStack extends cdk.Stack {
         }),
       ],
     }))
+
     
     moviesTable.grantReadData(getMovieReviewByIdFn)
     moviesTable.grantReadData(getMovieReviewByParameter)

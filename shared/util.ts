@@ -15,3 +15,7 @@ export const generateBatch = (data: MovieReviews[]) => {
   });
 };
 
+export function isNumber(str: string): boolean {
+  return /^\d+$/.test(str);
+}
+
