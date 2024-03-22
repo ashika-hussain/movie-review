@@ -30,4 +30,5 @@ This repository contains an implementation of a serverless REST API for the AWS 
 
 ### Independent learning (If relevant).
 
-[ Briefly explain any aspects of your submission that required independent research and learning, i.e. typically related to the higher grade bands. State the source files that have evidence of this.
+ +I had to learn about lambda layering, which involves using lambda functions within neural network layers. This required independent research and understanding. You can see evidence of this in the common file and "movie-review-stack" project files.
+ +I had to learn how to use AWS Translate for translation tasks, as evidenced by the "translate.ts" file and the "movie-review-stack" project. This involved independent research and learning to implement translation functionality using AWS Translate services.
